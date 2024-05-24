@@ -17,3 +17,6 @@ six==1.16.0
 smmap==5.0.1
 urllib3==2.2.1
 wandb==0.17.0
+psycopg~=3.1.18
+psycopg-binary
+python-dotenv~=1.0.1
