@@ -2,19 +2,19 @@ services:
 
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: Postgres
     restart: always
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "user", "-d", "postgres" ]
+      test: [ "CMD", "pg_isready", "-U", "user", "-d", "Postgres" ]
       interval: 10s
       retries: 5
       start_period: 5s
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres/deploy:/docker-entrypoint-initdb.d
-      - ./postgres/data:/var/lib/postgresql/data
+      - ./Postgres/deploy:/docker-entrypoint-initdb.d
+      - ./Postgres/data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: postgres
+      POSTGRES_DB: Postgres
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password

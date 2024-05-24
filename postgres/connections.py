@@ -1,4 +1,4 @@
-from psycopg import connect
+from psycopg import connect, connection
 from psycopg.rows import dict_row
 import os
 
@@ -7,7 +7,18 @@ from .vault import Settings
 settings = Settings()
 
 
-def get_connection():
+def get_connection() -> connection:
+    """
+
+    How to:
+
+    with get_connection() as conn:
+        with get_connection().cursor() as cur:
+            cur.execute("SELECT * FROM raw;")
+    conn.close()
+
+    :return:
+    """
 
     host = os.getenv("POSTGRES_HOST")
     port = os.getenv("POSTGRES_PORT")
@@ -21,7 +32,8 @@ def get_connection():
         dbname=dbname,
         user=user,
         password=password,
-        row_factory=dict_row
+        row_factory=dict_row,
+        autocommit=True
     )
 
     return cnn
