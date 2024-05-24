@@ -1,0 +1,20 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "user", "-d", "postgres" ]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/deploy:/docker-entrypoint-initdb.d
+      - ./postgres/data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
