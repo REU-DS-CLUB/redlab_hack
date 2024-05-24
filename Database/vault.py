@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-import redlab_hack.utils.config as config
+import utils.config as config
 
 
 class Settings(BaseSettings):

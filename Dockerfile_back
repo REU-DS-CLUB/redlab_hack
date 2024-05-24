@@ -1,0 +1,18 @@
+FROM python:3.10
+
+WORKDIR /app
+
+RUN apt-get update
+RUN pip install --upgrade pip
+
+COPY ./Back ./Back
+COPY ./Database ./Back/Database
+COPY ./utils ./Back/utils
+COPY ./Back/requirements.txt .
+COPY .env .
+
+RUN pip install -r requirements.txt
+
+EXPOSE 8000
+
+CMD ["python3", "./Back/main.py"]

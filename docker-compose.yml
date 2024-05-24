@@ -1,20 +1,39 @@
 services:
 
+  #front:
+  # build:
+  #   context: .
+  #   dockerfile: Dockerfile_front
+  #  ports:
+  #    - "8501:8501"
+  #  depends_on:
+  #    - back
+
+  back:
+    build:
+      context: .
+      dockerfile: Dockerfile_back
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:15
-    container_name: Postgres
+    container_name: postgres
     restart: always
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "user", "-d", "Postgres" ]
+      test: [ "CMD", "pg_isready", "-U", "user", "-d", "postgres" ]
       interval: 10s
       retries: 5
       start_period: 5s
     ports:
       - "5432:5432"
     volumes:
-      - ./Postgres/deploy:/docker-entrypoint-initdb.d
-      - ./Postgres/data:/var/lib/postgresql/data
+      - ./Database/deploy:/docker-entrypoint-initdb.d
+      - ./Database/data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: Postgres
+      POSTGRES_DB: postgres
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
