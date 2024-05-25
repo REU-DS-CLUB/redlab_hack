@@ -10,6 +10,7 @@ def web_response(data: pd.DataFrame) -> pd.DataFrame:
         (data['scope'].isna()) &
         (data['name'] == 'HttpDispatcher')]
 
+    filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     filtered_data['time'] = filtered_data['point']
     filtered_data['web_response'] = filtered_data['total_call_time'].sum() / filtered_data['call_count'].sum()
     grouped_data = filtered_data.groupby('time').agg({
@@ -29,6 +30,7 @@ def throughput(data: pd.DataFrame) -> pd.DataFrame:
         (data['name'] == 'HttpDispatcher')]
     #throughput
 #
+    filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     aggregated_data = filtered_data.groupby('point').agg({'call_count': 'sum'}).reset_index()
     aggregated_data.rename(columns={'point': 'time', "call_count": "throughput"}, inplace=True)
     result_data = aggregated_data.sort_values(by='time')
@@ -42,7 +44,7 @@ def apdex(data: pd.DataFrame) -> pd.DataFrame:
     (data['scope'].isna()) &
     (data['name'] == 'Apdex')
 ]
-
+    filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     aggregated_data = filtered_data.groupby('point').agg({
         'call_count': 'sum',
         'total_call_time': 'sum',
@@ -71,7 +73,7 @@ def error(data: pd.DataFrame) -> pd.DataFrame:
         (data['scope'].isna()) &
         (data['name'].isin(['HttpDispatcher', 'Errors/allWeb']))
         ]
-
+    filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     agg_httpdispatcher = filtered_data[filtered_data['name'] == 'HttpDispatcher'].groupby('point').agg(
         {'call_count': 'sum'}).reset_index()
     agg_errors = filtered_data[filtered_data['name'] == 'Errors/allWeb'].groupby('point').agg(
