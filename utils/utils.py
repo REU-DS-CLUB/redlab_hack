@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+from typing import Dict
+import matplotlib.pyplot as plt
 
 
 def web_response(data: pd.DataFrame) -> pd.DataFrame:
@@ -119,3 +121,18 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
 
     return metrics_table
     
+def plot_anomalies(data: Dict[str, pd.DataFrame], feature_name : str):
+    
+    df = data[feature_name]
+
+    plt.figure(figsize=(20, 8))
+
+    plt.plot(df['time'], df['value'], color='blue', label=f'Значения показателя {feature_name}')
+    anomalies = df[df['labels'] == 1]
+    plt.scatter(anomalies['time'], anomalies['value'], color='red', s=100, label='Аномалия')
+    plt.title(f'Временной ряд с аномалиями показателя {feature_name}')
+    plt.xlabel('Временной ряд')
+    plt.ylabel(f'{feature_name}')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
