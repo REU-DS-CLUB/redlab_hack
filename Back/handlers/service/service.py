@@ -1,6 +1,6 @@
 import pandas as pd
-from Database.connections import get_connection, get_engine
-from utils.utils import web_response, throughput, apdex, error
+from Database.connections import get_connection
+from utils.utils import make_table
 
 
 class Service:
@@ -15,10 +15,40 @@ class Service:
         :param df_raw: полученный через API и открытый Pandas DataFrame
         :return: None
         """
-        df_metrics = web_response(df_raw)
-        df_metrics['throughput'] = throughput(df_raw)['call_count']
-        df_metrics['apdex'] = apdex(df_raw)['metric']
-        df_metrics['error_rate'] = error(df_raw)['metric']
 
-        # df_raw.to_sql(name='raw', con=get_engine(), if_exists='append')
-        df_metrics.to_sql(name='metrics', con=get_engine(), if_exists='append', schema='postgres')
+        return df_raw.shape, list(df_raw.columns)
+
+        # TODO пустой дф получается после make_table (подозреваю типы данных)
+        df_metrics = make_table(df_raw)
+        df_metrics.to_csv('data.tsv', sep='\t', header=False, index=False)
+
+        try:
+            with get_connection() as cnn:
+                with cnn.cursor() as cur:
+                    with open('data.tsv', "r") as f:
+                        with cur.copy(f"COPY metrics "
+                                      f"FROM STDIN (format 'csv', delimiter '\t', header true)") as copy:
+                            while data := f.read():
+                                copy.write(data)
+            cnn.close()
+            return min(df_metrics['time']), max(df_metrics['time'])
+        except Exception as e:
+            return e, 'error'
+
+    def query_db(self, start_dt: str, end_dt: str):
+
+        try:
+            with get_connection() as cnn:
+                with cnn.cursor() as cur:
+                    cur.execute(f"SELECT * FROM METRICS WHERE time BETWEEN {start_dt} AND {end_dt}")
+                    res = cur.fetchall()
+            cnn.close()
+            return res
+        except Exception as e:
+            raise e
+
+    def query_ml(self, start_dt: str, end_dt: str, metrics: list):
+
+
+
+        pass
