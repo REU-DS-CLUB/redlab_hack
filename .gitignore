@@ -1,10 +1,12 @@
 secrets/
-
+Data
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+eda_pelageya.ipynb
 
 # C extensions
 *.so
