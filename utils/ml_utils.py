@@ -50,11 +50,11 @@ def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, 
 
         with_out_anomaly_var = np.mean((overall_mean - data[(data.time >= start) & (data.time <= end)][col_name])**2)
 
-        weights[col_name] = with_out_anomaly_var / overall_var
+        weights[col_name] = (with_out_anomaly_var**0.5) / (overall_var**0.5)
     
     return weights
 
-def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_names: List[str]) -> Dict[str, pd.DataFrame]:
+def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str, pd.DataFrame]:
 
     """
     Вход 
@@ -78,14 +78,15 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         scores = model.decision_scores_
         threshold = model.threshold_
         threshold = (threshold - np.min(scores)) / (np.max(scores) - np.min(scores))
-        print("Threshold: ", threshold)
 
         return pd.DataFrame({
             "labels": labels,
             "probability": normalize_data(scores)
-        })
-
+        }), threshold
+    
+    column_names = ["web_response", "throughput", "apdex", "error"]
     weights = calculate_weight(data, column_names, start_date, end_date)
+    
     column_names.extend(['time', 'time_numeric'])
     filtered_df = data[(data['time'] >= start_date) & (data['time'] <= end_date)][column_names]
 
@@ -105,11 +106,15 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         else:
             continue
 
-        clf_df = fit_clf(clf, data_values)
+        clf_df, threshold = fit_clf(clf, data_values)
         clf_df["time"] = filtered_df["time"].values
         clf_df["value"] = filtered_df[column].values
         result[column] = clf_df
 
-
+        scaled_weight = (weights[column] / (weights[column] + 1)) * 2
+        for index, row in result[column].iterrows():
+            result[column].at[index, "probability"] = row["probability"] * scaled_weight
+        # result[column].probability *= scaled_weight
+        result[column].labels = (result[column].probability > threshold).astype(int)
 
     return result
