@@ -26,11 +26,11 @@ def throughput(data: pd.DataFrame) -> pd.DataFrame:
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
         (data['scope'].isna()) &
-        (data['name'] == 'HttpDispatcher')
-    ]
-
+        (data['name'] == 'HttpDispatcher')]
+    #throughput
+#
     aggregated_data = filtered_data.groupby('point').agg({'call_count': 'sum'}).reset_index()
-    aggregated_data.rename(columns={'point': 'time'}, inplace=True)
+    aggregated_data.rename(columns={'point': 'time', "call_count": "throughput"}, inplace=True)
     result_data = aggregated_data.sort_values(by='time')
     return result_data
 
@@ -56,12 +56,12 @@ def apdex(data: pd.DataFrame) -> pd.DataFrame:
         'total_exclusive_time': 'f'
     }, inplace=True)
 
-    aggregated_data['metric'] = (aggregated_data['s'] + aggregated_data['t'] / 2) / (aggregated_data['s'] + aggregated_data['t'] + aggregated_data['f'])
+    aggregated_data['apdex'] = (aggregated_data['s'] + aggregated_data['t'] / 2) / (aggregated_data['s'] + aggregated_data['t'] + aggregated_data['f'])
 
     aggregated_data.rename(columns={'point': 'time'}, inplace=True)
     result_data = aggregated_data.sort_values(by='time')
 
-    return result_data[["time", "metric"]]
+    return result_data[["time", "apdex"]]
 
 
 def error(data: pd.DataFrame) -> pd.DataFrame:
@@ -82,28 +82,28 @@ def error(data: pd.DataFrame) -> pd.DataFrame:
 
     merged_data = pd.merge(agg_httpdispatcher, agg_errors, on='point', how='outer').fillna(0)
 
-    merged_data['metric'] = merged_data['errors_call_count'] / merged_data['httpdispatcher_call_count']
+    merged_data['error'] = merged_data['errors_call_count'] / merged_data['httpdispatcher_call_count']
 
     merged_data.rename(columns={'point': 'time'}, inplace=True)
 
     result_data = merged_data.sort_values(by='time')
 
-    return result_data[["time", "metric"]]
+    return result_data[["time", "error"]]
 
-def metrics(df: pd.DataFrame, mask: np.array) -> dict:
+def make_table(data: pd.DataFrame) -> pd.DataFrame:
 
-    normalized_metric = (df['metric'] - np.mean(df['metric'])) / np.std(df['metric'])
-    original_variance = np.var(normalized_metric)
-    filtered_metric = normalized_metric[mask == 0]
-    filtered_variance = np.var(filtered_metric)
+    web_response_table = web_response(data)
+    throughput_table =  throughput(data)
+    apdex_table = apdex(data)
+    error_table = error(data)
 
-    variance_difference = filtered_variance / original_variance * 100 - 100
-    fraction_anomaly = len(mask[mask == 1]) / len(mask)
+    metrics_table = pd.DataFrame({
+        "time": web_response_table["time"],
+        "web_response": web_response_table["web_response"],
+        "throughput": throughput_table["throughput"],
+        "apdex": apdex_table["apdex"],
+        "error": error_table["error"]
+    })
 
-    metric = {
-        "variance_diff": variance_difference,
-        "fraction_anomaly": fraction_anomaly
-    }
-
-    return metric
-
+    return metrics_table
+    
