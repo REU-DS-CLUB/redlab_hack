@@ -98,9 +98,11 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
     throughput_table =  throughput(data)
     apdex_table = apdex(data)
     error_table = error(data)
+    time_numeric = pd.to_datetime(web_response_table['time']).astype(int) / 10**9 / 60
 
     metrics_table = pd.DataFrame({
         "time": web_response_table["time"],
+        'time_numeric':time_numeric,
         "web_response": web_response_table["web_response"],
         "throughput": throughput_table["throughput"],
         "apdex": apdex_table["apdex"],
