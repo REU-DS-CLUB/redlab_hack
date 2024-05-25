@@ -2,6 +2,7 @@ secrets/
 Data
 .DS_Store
 /wandb
+*.vs
 
 /Data
 Data
