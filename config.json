@@ -1,3 +1,11 @@
 {
-    "logging": 0
+    "logging": 0, 
+
+    "IsolationForest": {
+        "web_response": {"param": 89, "param2": 89}, 
+        "throughput": {"param": 89}, 
+        "apdex": {"param": 89}, 
+        "error": {"param": 89}
+    }
+
 }
