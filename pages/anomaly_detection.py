@@ -16,8 +16,9 @@ def foo(input_):
     if input_.isdigit():
         st.session_state.len = int(input_)
         st.write(str(st.session_state.len))
+    else:
+        st.error('Введите')
 
-# типо у меня есть эти константы откуда-нибудь
 START_DATE = datetime(year=2024, month=1, day=1)
 END_DATE = datetime(year=2024, month=1, day=31)
 if "len" not in st.session_state:
