@@ -8,6 +8,7 @@ def metrics(df: pd.DataFrame, mask: np.array, metrics_name: str) -> dict:
     original_variance = np.var(normalized_metric)
     filtered_metric = normalized_metric[mask == 0]
     filtered_variance = np.var(filtered_metric)
+    
 
     variance_difference = filtered_variance / original_variance * 100 - 100
     fraction_anomaly = len(mask[mask == 1]) / len(mask)
