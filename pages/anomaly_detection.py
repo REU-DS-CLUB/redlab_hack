@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
-from datetime import datetime
+from datetime import date, datetime
 
 
 st.set_page_config(
@@ -59,18 +59,19 @@ def init_state(state:str, default):
     if state not in st.session_state:
         st.session_state[state] = default
 
-def save(start_date,end_date,is_recreate, grath1_vis,grath2_vis,grath3_vis,grath4_vis):
+def save(end_date,is_recreate, grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val):
     st.session_state["grath1_vis"] = grath1_vis
     st.session_state["grath2_vis"] = grath2_vis
     st.session_state["grath3_vis"] = grath3_vis
     st.session_state["grath4_vis"] = grath4_vis
-    st.session_state["start_date"] = start_date
+    #st.session_state["start_date"] = start_date
     st.session_state["end_date"] = end_date
     st.session_state["is_recreate"] = is_recreate
+    st.session_state["slider_val"] = (st.session_state["start_date"], end_date)
     
 # типо у меня есть эти константы откуда-нибудь
-START_DATE = datetime(year=2024, month=1, day=1)
-END_DATE = datetime(year=2024, month=1, day=31)
+START_DATE = datetime(year=2024, month=1, day=1,hour=5, minute=10)
+END_DATE = datetime(year=2024, month=1, day=31,hour=11, minute=30)
 
 init_state("start_date", START_DATE)
 init_state("end_date", END_DATE)
@@ -79,6 +80,7 @@ init_state("grath1_vis", True)
 init_state("grath2_vis", True)
 init_state("grath3_vis", True)
 init_state("grath4_vis", True)
+init_state("slider_val", (START_DATE.date(),END_DATE.date()))
 
 st.markdown("""<h1 style = 'text-align: center'> Анализ временного ряда</h1>""", unsafe_allow_html=True)
 data = pd.read_csv('data.csv')
@@ -88,19 +90,15 @@ if st.session_state["grath1_vis"]:
 if st.session_state["grath2_vis"]:
     grath(data, "apdex")
 if st.session_state["grath3_vis"]:     
-    x = np.linspace(0,int(st.session_state.len),100)
-    fig = plt.figure(figsize=(12,3))
-    plt.plot(x, np.sin(x))
-    st.write(fig)
+    grath(data, "throughput")
 if st.session_state["grath4_vis"]:   
-    x = np.linspace(0,int(st.session_state.len),100)
-    fig = plt.figure(figsize=(12,3))
-    plt.plot(x, np.sin(x))
-    st.write(fig)
+    grath(data, "apdex")
+
+slider_val = st.slider("TEST",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"])
 
 st.write("Настройки")
 col1, col2 = st.columns(2)
-start_date = col1.date_input("Выберите дату старта", min_value=START_DATE, max_value=END_DATE) #key="start_date"
+col1.date_input("Выберите дату старта", min_value=START_DATE, max_value=END_DATE,key="start_date") #key="start_date"
 end_date = col2.date_input("Выберите дату конца", min_value=st.session_state.start_date, max_value=END_DATE) #, key="end_date"
 is_recreate = col2.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
 st.write("Фильтрация")
@@ -110,7 +108,7 @@ grath2_vis = col1.checkbox("Метрика 2", value=st.session_state["grath2_vi
 grath3_vis = col2.checkbox("Метрика 3", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
 grath4_vis = col2.checkbox("Метрика 4", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
 
-st.button("Принять", on_click=save, args=(start_date,end_date,is_recreate, grath1_vis,grath2_vis,grath3_vis,grath4_vis,))
+st.button("Принять", on_click=save, args=(end_date,is_recreate, grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val,))
 
 
 
