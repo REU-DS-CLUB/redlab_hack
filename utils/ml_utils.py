@@ -81,7 +81,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
             "probability": normalize_data(scores)
         })
 
-
+    weights = calculate_weight(data, column_names, start_date, end_date)
     column_names.extend(['time', 'time_numeric'])
     filtered_df = data[(data['time'] >= start_date) & (data['time'] <= end_date)][column_names]
 
@@ -99,11 +99,13 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         elif column == "error":
             clf = IForest(contamination=0.0011)
         else:
-            continue  
+            continue
 
         clf_df = fit_clf(clf, data_values)
         clf_df["time"] = filtered_df["time"].values
         clf_df["value"] = filtered_df[column].values
         result[column] = clf_df
+
+
 
     return result
