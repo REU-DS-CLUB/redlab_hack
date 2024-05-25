@@ -49,7 +49,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
     Выход
     dict: 
         - датафрейм с колонками 
-            1. Таймстемп time
+            1. Таймстемп datetime
             2. Булево значение по аномалии label
             3. Вероятность по аномалии probability 
             4. Изначальное значение value
