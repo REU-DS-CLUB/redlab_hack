@@ -76,6 +76,10 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         model.fit(data)
         labels = model.labels_
         scores = model.decision_scores_
+        threshold = model.threshold_
+        threshold = (threshold - np.min(scores)) / (np.max(scores) - np.min(scores))
+        print("Threshold: ", threshold)
+
         return pd.DataFrame({
             "labels": labels,
             "probability": normalize_data(scores)
