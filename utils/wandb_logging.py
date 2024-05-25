@@ -4,6 +4,7 @@ import json
 with open('config.json', 'r') as file:
     config = json.load(file)
 
+
 def init_exp(exp_tags=[]):
     if config['logging']:
         with open('wandb_secret.txt', 'r') as file:
@@ -15,4 +16,7 @@ def init_exp(exp_tags=[]):
 def log_params(params={}):
     if config['logging']:
         wandb.log(params)
-        wandb.finish()
+
+
+def finish_exp():
+    wandb.finish()
