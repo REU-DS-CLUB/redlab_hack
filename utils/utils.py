@@ -3,23 +3,31 @@ import numpy as np
 
 
 def web_response(data: pd.DataFrame) -> pd.DataFrame:
-
+    # Фильтрация данных
     filtered_data = data[
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
         (data['scope'].isna()) &
         (data['name'] == 'HttpDispatcher')]
 
+    # Преобразование столбца 'point' в datetime
     filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     filtered_data['time'] = filtered_data['point']
-    filtered_data['web_response'] = filtered_data['total_call_time'].sum() / filtered_data['call_count'].sum()
+
+    # Группировка данных по времени и вычисление отношения сумм total_call_time к call_count
     grouped_data = filtered_data.groupby('time').agg({
-        'web_response': 'sum'
+        'total_call_time': 'sum',
+        'call_count': 'sum'
     }).reset_index()
-    result_data = grouped_data.sort_values(by='time')
+
+    # Вычисление web_response как отношение сумм total_call_time к call_count
+    grouped_data['web_response'] = grouped_data['total_call_time'] / grouped_data['call_count']
+    grouped_data['web_response'] = grouped_data['web_response'].fillna(0)
+
+    # Сортировка по времени
+    result_data = grouped_data[['time', 'web_response']].sort_values(by='time')
 
     return result_data
-
 
 def throughput(data: pd.DataFrame) -> pd.DataFrame:
 
@@ -98,10 +106,10 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
     throughput_table =  throughput(data)
     apdex_table = apdex(data)
     error_table = error(data)
-    time_numeric = pd.to_datetime(web_response_table['time']).astype(int) / 10**9 / 60
+    time_numeric = pd.to_datetime(throughput_table['time']).astype(int) / 10**9 / 60
 
     metrics_table = pd.DataFrame({
-        "time": web_response_table["time"],
+        "time": throughput_table["time"],
         'time_numeric':time_numeric,
         "web_response": web_response_table["web_response"],
         "throughput": throughput_table["throughput"],
