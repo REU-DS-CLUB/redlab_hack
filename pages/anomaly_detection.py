@@ -82,6 +82,7 @@ init_state("grath3_vis", True)
 init_state("grath4_vis", True)
 init_state("slider_val", (START_DATE.date(),END_DATE.date()))
 
+
 st.markdown("""<h1 style = 'text-align: center'> Анализ временного ряда</h1>""", unsafe_allow_html=True)
 data = pd.read_csv('data.csv')
 
