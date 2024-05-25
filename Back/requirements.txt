@@ -1,5 +1,6 @@
 psycopg~=3.1.18
 psycopg-binary
+psycopg2-binary
 python-dotenv~=1.0.1
 sqlalchemy>=2.0.0
 uvicorn~=0.29.0
@@ -9,3 +10,4 @@ starlette~=0.37.2
 DateTime~=5.3
 pydantic_settings
 python-multipart
+streaming_form_data
