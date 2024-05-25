@@ -122,7 +122,6 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
 
     return metrics_table
 
-
 def plot_anomalies(data: Dict[str, pd.DataFrame], feature_name: str):
     df = data[feature_name]
 
