@@ -37,6 +37,23 @@ def normalize_data(array: np.ndarray) -> np.ndarray:
     array_normalized = scaler.fit_transform(array.reshape(-1, 1))
     return array_normalized.flatten()
 
+def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, end: datetime) -> dict[str, int]:
+    '''
+    function return a weight on which we need to multiply predictions of models on period
+    '''
+    weights = {}
+
+    for col_name in col_names:
+
+        overall_var = data[col_name].var()
+        overall_mean = data[col_name].mean()
+
+        with_out_anomaly_var = np.mean((overall_mean - data[(data.time >= start) & (data.time <= end)][col_name])**2)
+
+        weights[col_name] = with_out_anomaly_var / overall_var
+    
+    return weights
+
 def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_names: List[str]) -> Dict[str, pd.DataFrame]:
 
     """
@@ -69,6 +86,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
     filtered_df = data[(data['time'] >= start_date) & (data['time'] <= end_date)][column_names]
 
     result = {}
+
     for column in column_names:
         data_values = filtered_df[['time_numeric', column]].values
 
