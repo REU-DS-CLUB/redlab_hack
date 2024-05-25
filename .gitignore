@@ -1,6 +1,7 @@
 secrets/
 Data
 .DS_Store
+*.vs
 
 /Data
 Data
