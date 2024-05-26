@@ -118,6 +118,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
 
         clf_df = fit_clf(clf, data_values)
         clf_df["time"] = filtered_df["time"].values
+        clf_df["time"] = clf_df["time"].apply(lambda x: str(x))
         clf_df["value"] = filtered_df[column].values
         result[column] = clf_df.to_json()
 
