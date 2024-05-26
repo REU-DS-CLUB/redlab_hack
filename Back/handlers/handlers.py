@@ -1,11 +1,15 @@
 """
 Ручки API-сервиса
 """
+import csv
 from datetime import datetime
+from io import StringIO
 from typing import Optional
+
+import pandas as pd
 from pandas import DataFrame
 
-from fastapi import APIRouter, Request, HTTPException, status
+from fastapi import APIRouter, Request, HTTPException, status, UploadFile, File
 from streaming_form_data import StreamingFormDataParser
 from streaming_form_data.targets import ValueTarget
 from streaming_form_data.validators import MaxSizeValidator, ValidationError
@@ -41,7 +45,8 @@ class MaxBodySizeValidator:
 
 @handlers.post('/upload',
                description='upload new data')
-async def upload(request: Request) -> dict[str, str]:
+#async def upload(request: Request) -> dict[str, str]:
+async def upload(request: Request):
     """
     Ручка по загрузке новой порции данных в БД с определенными ограничениями в реализации на данный момент
     (только .tsv, до 2gb, неповторяющиеся временные интервалы)
@@ -80,15 +85,10 @@ async def upload(request: Request) -> dict[str, str]:
         # отправляем данные на предобработку и сохранение
         try:
             service.update_db(df)
-        except:
+            #service.update_db(service.get_labeled_df(df))
+        except Exception as e:
             raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                                detail='Error while preprocessing')
-
-        try:
-            service.update_db(service.get_labeled_df(df))
-        except:
-            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                                detail='Error while preprocessing')
+                                detail=f'Error while preprocessing: {e}')
 
     except ClientDisconnect:
         print("Client Disconnected")
@@ -104,6 +104,41 @@ async def upload(request: Request) -> dict[str, str]:
                             detail=f'There was an error uploading the file: {e}')
 
     return {"message": "success"}
+
+
+@handlers.post("/upload_file")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        contents = file.file.read()
+
+        return contents
+
+        with open(file.filename, 'wb') as f:
+            f.write(contents)
+    except Exception as e:
+        return {"message": f"There was an error uploading the file: {e}"}
+    finally:
+        file.file.close()
+        return pd.read_csv(file.filename, sep='\t').head(10).to_json()
+
+        df = pd.read_csv(file.filename,
+                         sep='\t',
+                         names=['account_id', 'name', 'point', 'call_count', 'total_call_time',
+                                'total_exclusive_time', 'min_call_time', 'max_call_time', 'sum_of_squares',
+                                'instances', 'language', 'app_name', 'app_id', 'scope', 'host', 'display_host',
+                                'pid', 'agent_version', 'labels'])
+
+        df['call_count'] = df['call_count'].astype('float')
+        df['total_call_time'] = df['total_call_time'].astype('float')
+        df['total_exclusive_time'] = df['total_exclusive_time'].astype('float')
+
+        try:
+            service.update_db(df)
+            #service.update_db(service.get_labeled_df(df))
+            return {"message": ":)"}
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                                detail=f'Error while preprocessing: {e}')
 
 
 @handlers.get('/global_detection',
@@ -138,7 +173,8 @@ async def local_algo(start_dt: str, end_dt: str) -> Optional[dict]:
 
     # проверяем корректность заданных параметров
     if end_dt > start_dt:
-        return service.query_ml(datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S"), datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S"))
+        return service.query_ml(datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S"),
+                                datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S"))
     else:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
                             detail='End date is earlier then start')

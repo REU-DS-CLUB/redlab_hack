@@ -1,11 +1,9 @@
 """
 Вспомогательные функции для работы ML'я
 """
-import json
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from typing import Dict
 from pyod.models.hbos import HBOS
 from pyod.models.iforest import IForest
 from sklearn.preprocessing import MinMaxScaler
@@ -73,7 +71,7 @@ def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, 
     return weights
 
 
-def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str, json]:
+def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
     """
     Функция с пайплайном предобработки данных и инференса
 

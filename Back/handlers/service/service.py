@@ -12,7 +12,7 @@ from utils.ml_utils import ml, get_data_labels
 
 class Service:
 
-    def update_db(self, df_raw: pd.DataFrame) -> Optional[tuple]:
+    def update_db(self, df_raw: pd.DataFrame):
         """
         Функция для загрузки дополнительных данных в БД
 
