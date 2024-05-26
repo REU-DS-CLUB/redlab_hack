@@ -9,7 +9,7 @@ import numpy as np
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from datetime import date, datetime, time, timedelta
-from host.request import get_marc, get_new_anomalies
+from host.request import get_marc, get_new_anomalies, load_data
 import requests
 import seaborn as sns
 
@@ -206,7 +206,7 @@ def init_state(state:str, default):
     if state not in st.session_state:
         st.session_state[state] = default
 
-def save(end_date,is_recreate, selected_hour1, selected_hour2, selected_minute1, selected_minute2, grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val):
+def save(end_date,is_recreate, selected_hour1, selected_hour2, selected_minute1, selected_minute2, grath1_vis,grath2_vis,grath3_vis,grath4_vis):
     st.session_state["grath1_vis"] = grath1_vis
     st.session_state["grath2_vis"] = grath2_vis
     st.session_state["grath3_vis"] = grath3_vis
@@ -250,18 +250,23 @@ def save(end_date,is_recreate, selected_hour1, selected_hour2, selected_minute1,
             # st.session_state["data"] = json_text
             print(df_final)
         # http запрос с пересчетом
+        else:
+            st.warning("Problem with http connection.\nTry again later")
     else:
         response = get_marc(str(st.session_state["start_date"]), str(st.session_state["end_date"]))
         if (response.status_code == 200):
             json_text = pd.DataFrame(response.json())
+            json_text = json_text.sort_values("time")
             st.session_state["data"] = json_text
             print(json_text)
         # http запрос без пересчета
+        else:
+            st.warning("Problem with http connection.\nTry again later")
     
     
 @st.cache_data()
 def download(data_file):
-    return pd.read_tsv(data_file)
+    return pd.read_csv(data_file)
 
 def request():
     try:
@@ -310,6 +315,8 @@ END_DATE = datetime(year=2024, month=5, day=15,hour=0, minute=0)
 
 init_state("start_date", START_DATE)
 init_state("end_date", END_DATE)
+init_state("default_start_date", START_DATE)
+init_state("default_end_date", END_DATE)
 init_state("is_recreate", False)
 init_state("grath1_vis", True)
 init_state("grath2_vis", True)
@@ -335,20 +342,19 @@ else:
     else:
         st.write("Нет данных для отображения")
 
-slider_val = st.slider("Неточный диапазон",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"], key="slider_val", label_visibility="visible")
+st.slider("Неточный диапазон",min_value=st.session_state["default_start_date"].date(), max_value=st.session_state["default_end_date"].date(), key="slider_val") # , value=st.session_state["slider_val"]
 
 
 
 exp = st.expander("Точный диапазон", expanded=st.session_state["is_expanded"])
 col1, col2 = exp.columns(2)
-with col1:
-    st.date_input("Выберите дату старта", min_value=START_DATE, max_value=END_DATE, value=st.session_state["slider_val"][0],key="start_date") #key="start_date"
-    selected_hour1 = st.number_input("Час", min_value=0, max_value=23, key="qwe")
-    selected_minute1 = st.number_input("Минута", min_value=0, max_value=59, key="wer")
-with col2:
-    end_date = st.date_input("Выберите дату конца", min_value=st.session_state.start_date + timedelta(days=1), max_value=END_DATE, value=st.session_state["slider_val"][1]) #, key="end_date"
-    selected_hour2 = st.number_input("Час", min_value=0, max_value=23)
-    selected_minute2 = st.number_input("Минута", min_value=0, max_value=59)
+
+col1.date_input("Выберите дату старта", min_value=st.session_state["default_start_date"].date(), max_value=st.session_state["default_end_date"].date(), value=st.session_state["slider_val"][0],key="start_date") #key="start_date"
+selected_hour1 = col1.number_input("Час", min_value=0, max_value=23, key="qwe")
+selected_minute1 = col1.number_input("Минута", min_value=0, max_value=59, key="wer")
+end_date = col2.date_input("Выберите дату конца", min_value=st.session_state.start_date + timedelta(days=1), max_value=st.session_state["default_end_date"].date(), value=st.session_state["slider_val"][1]) #, key="end_date"
+selected_hour2 = col2.number_input("Час", min_value=0, max_value=23)
+selected_minute2 = col2.number_input("Минута", min_value=0, max_value=59)
     
 is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
 st.write("Фильтрация")
@@ -358,9 +364,9 @@ grath2_vis = col1.checkbox("Метрика throughput", value=st.session_state["
 grath3_vis = col2.checkbox("Метрика apdex", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
 grath4_vis = col2.checkbox("Метрика error", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
 
-st.button("Принять", on_click=save, args=(end_date,is_recreate,selected_hour1,selected_hour2,selected_minute1,selected_minute2,  grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val,))
+st.button("Принять", on_click=save, args=(end_date,is_recreate,selected_hour1,selected_hour2,selected_minute1,selected_minute2,grath1_vis,grath2_vis,grath3_vis,grath4_vis,))
 
-st.button("REQUEST", on_click=request)
+
 
 
 
@@ -370,12 +376,18 @@ data_file = st.file_uploader(label='Вы можете загрузить сво�
 if data_file is not None:
     try:
         # Пытаемся загрузить файл как TSV
-        data = download(data_file)
-        
+        response = load_data(data_file.name)
+        if (response.status_code == 200):
+            response = response.json()
+            default_start_date, default_end_date = response["start_dt"], response["end_dt"]
+            st.session_state["default_start_date"] = default_start_date
+            st.session_state["default_end_date"] = default_end_date
+        else:
+            st.warning("Problem with http connection.\nTry again later")
         # типо http запрос на загрузку файла на сервер и получение start_date, end_date
-        # типо http запрос на получение датафрейма для графиков
 
         st.success("Файл успешно загружен!")
     except Exception as e:
         st.error("Ошибка при загрузке файла: убедитесь, что файл имеет формат .tsv")
+        print(e)
     
