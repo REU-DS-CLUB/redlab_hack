@@ -1,3 +1,6 @@
+"""
+Входная точка для приложения FastAPI
+"""
 import uvicorn
 from fastapi import FastAPI
 from handlers.handlers import handlers

@@ -1,3 +1,6 @@
+"""
+Ручки API-сервиса
+"""
 from typing import Optional
 from pandas import DataFrame
 

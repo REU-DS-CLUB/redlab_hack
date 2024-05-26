@@ -1,3 +1,6 @@
+"""
+Вспомогательные фунцкии для ручек API-сервиса
+"""
 from typing import Optional
 import pandas as pd
 

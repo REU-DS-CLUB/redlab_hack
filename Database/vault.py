@@ -1,3 +1,6 @@
+"""
+Загрузка кредов для подключений к БД
+"""
 from pydantic_settings import BaseSettings
 import utils.config as config
 

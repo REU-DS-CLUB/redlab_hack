@@ -1,9 +1,19 @@
+"""
+Вспомогательные функции для предобработки данных
+"""
 import pandas as pd
 from typing import Dict
 import matplotlib.pyplot as plt
 
 
 def web_response(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Функция рассчета озной из метрик, используемой в данных
+
+    :param data: сырой датафрейм
+    :return: предобработанный датафрейм
+    """
+
     # фильтрация данных
     filtered_data = data[
         (data['language'] == 'java') &
@@ -32,6 +42,13 @@ def web_response(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def throughput(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Функция рассчета озной из метрик, используемой в данных
+
+    :param data: сырой датафрейм
+    :return: предобработанный датафрейм
+    """
+
     filtered_data = data[
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
@@ -47,6 +64,13 @@ def throughput(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def apdex(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Функция рассчета озной из метрик, используемой в данных
+
+    :param data: сырой датафрейм
+    :return: предобработанный датафрейм
+    """
+
     filtered_data = data[
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
@@ -77,6 +101,13 @@ def apdex(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def error(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Функция рассчета озной из метрик, используемой в данных
+
+    :param data: сырой датафрейм
+    :return: предобработанный датафрейм
+    """
+
     filtered_data = data[
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
@@ -104,6 +135,13 @@ def error(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_table(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Общая функция сборки датафрейма с метриками
+
+    :param data: сырой датафрейм
+    :return: целиковый предобработанный датафрейм со всеми метриками
+    """
+
     web_response_table = web_response(data)
     throughput_table = throughput(data)
     apdex_table = apdex(data)

@@ -1,3 +1,4 @@
+--инициализация необходимых таблиц при деплое сервиса
 drop table if exists metrics;
 drop table if exists labels;
 
