@@ -110,7 +110,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
         if column in ["web_response", "error"]:
             clf = IForest(contamination=0.001)
         elif column == "apdex":
-            clf = IForest(contamination=0.003)
+            clf = IForest(contamination=0.0015)
         elif column == "throughput":
             clf = HBOS(contamination=0.0035)
         else:
