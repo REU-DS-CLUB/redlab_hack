@@ -1,13 +1,13 @@
 services:
 
-  #front:
-  # build:
-  #   context: .
-  #   dockerfile: Dockerfile_front
-  #  ports:
-  #    - "8501:8501"
-  #  depends_on:
-  #    - back
+  front:
+    build:
+      context: .
+      dockerfile: Dockerfile_front
+    ports:
+      - "8510:8510"
+    depends_on:
+      - back
 
   back:
     build:
