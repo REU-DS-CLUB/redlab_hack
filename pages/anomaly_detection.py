@@ -2,6 +2,7 @@ from contextlib import ExitStack
 from pickletools import read_stringnl_noescape
 from typing import Dict
 import streamlit as st
+import seaborn as sns
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
@@ -10,7 +11,6 @@ from plotly.subplots import make_subplots
 from datetime import date, datetime, time, timedelta
 from host.request import get_marc, get_new_anomalies
 
-
 st.set_page_config(
     page_title='analysis_time_series',
     page_icon='📊'
@@ -18,13 +18,12 @@ st.set_page_config(
 st.sidebar.success("Выберете интересующий раздел")
 
 @st.cache_data() # suppress_st_warning=True
-def write(data: Dict[str, pd.DataFrame], feature_name : str):
-    
+def write(data: pd.DataFrame, feature_name : str):
     df = (data[feature_name]).astype(float)
-
+    data["time"] = pd.to_datetime((data['time']).str.replace("T", " "))
     fig = plt.figure(figsize=(20, 8))
 
-    plt.plot(data['time'], df, color='blue', label=f'Значения показателя {feature_name}')
+    sns.lineplot(x='time', y=feature_name, data=data, color='blue', hue=f'{feature_name}+_labels', label=f'Значения показателя {feature_name}')
     ind = feature_name+'_labels'
     anomalies = data[data[ind] == 1]
     #print((anomalies['time'].replace("T", " ")).iloc[-1,0])
@@ -43,9 +42,8 @@ def write(data: Dict[str, pd.DataFrame], feature_name : str):
 @st.cache_data()
 def grath(ts_df, metric: str):
     # Создаем данные временного ряда
-    dates = ts_df['time'].head(1000)
-    values = ts_df[metric].head(1000)
-
+    dates = ts_df['time']
+    values = ts_df[metric]
 
     # Вычисляем квантили
     q25 = np.percentile(values, 25)
@@ -77,7 +75,7 @@ def grath(ts_df, metric: str):
     )
 
     # Настройки оформления
-    fig.update_layout(title='Временной ряд с распределением значений', xaxis_title='Дата', yaxis_title='Значение', template='plotly_white')
+    fig.update_layout(title=f'Временной ряд с распределением значений метрики {metric}', xaxis_title='Дата', yaxis_title='Значение', template='plotly_white')
     fig.update_xaxes(title_text='Частота', row=1, col=1)
     fig.update_yaxes(title_text='Значение', row=1, col=1)
     fig.update_yaxes(title_text='Значение', row=1, col=2)
@@ -151,13 +149,13 @@ st.markdown("""<h1 style = 'text-align: center'> Анализ временног
 
 data = st.session_state["data"]
 if st.session_state["grath1_vis"]:
-    grath(data, "throughput")
+    grath(data, "web_response")
 if st.session_state["grath2_vis"]:
-    grath(data, "apdex")
-if st.session_state["grath3_vis"]:     
     grath(data, "throughput")
-if st.session_state["grath4_vis"]:   
+if st.session_state["grath3_vis"]:     
     grath(data, "apdex")
+if st.session_state["grath4_vis"]:   
+    grath(data, "error")
 
 slider_val = st.slider("Неточный диапазон",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"], key="slider_val", label_visibility="visible")
 
@@ -177,10 +175,10 @@ with col2:
 is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
 st.write("Фильтрация")
 col1, col2 = st.columns(2)
-grath1_vis = col1.checkbox("Метрика 1", value=st.session_state["grath1_vis"]) # , key="grath1_vis"
-grath2_vis = col1.checkbox("Метрика 2", value=st.session_state["grath2_vis"]) # , key="grath2_vis"
-grath3_vis = col2.checkbox("Метрика 3", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
-grath4_vis = col2.checkbox("Метрика 4", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
+grath1_vis = col1.checkbox("Метрика Web_response", value=st.session_state["grath1_vis"]) # , key="grath1_vis"
+grath2_vis = col1.checkbox("Метрика Throughput", value=st.session_state["grath2_vis"]) # , key="grath2_vis"
+grath3_vis = col2.checkbox("Метрика Apdex", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
+grath4_vis = col2.checkbox("Метрика Error_rate", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
 
 st.button("Принять", on_click=save, args=(end_date,is_recreate,selected_hour1,selected_hour2,selected_minute1,selected_minute2,  grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val,))
 
