@@ -4,7 +4,6 @@
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from typing import Dict
 from pyod.models.hbos import HBOS
 from pyod.models.iforest import IForest
 from sklearn.preprocessing import MinMaxScaler
@@ -70,6 +69,7 @@ def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, 
         weights[col_name] = with_out_anomaly_var / overall_var
 
     return weights
+
 
 def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
     """
