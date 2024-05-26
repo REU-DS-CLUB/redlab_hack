@@ -1,27 +1,26 @@
+from typing import Optional
 import pandas as pd
+
 from Database.connections import get_connection
-from utils.utils import make_table
+from utils.utils import make_table, web_response, throughput, apdex, error
+from utils.ml_utils import ml, get_data_labels
 
 
 class Service:
-    """
-    Service to handle requests with params
-    """
 
-    def update_db(self, df_raw: pd.DataFrame):
+    def update_db(self, df_raw: pd.DataFrame) -> Optional[(str, str)]:
         """
         Функция для загрузки дополнительных данных в БД
 
         :param df_raw: полученный через API и открытый Pandas DataFrame
-        :return: None
+        :return: минимальная и максимальная дата в данных (границы доступного интервала)
         """
 
-        return df_raw.shape, list(df_raw.columns)
-
-        # TODO пустой дф получается после make_table (подозреваю типы данных)
+        # предобработка сырых данных
         df_metrics = make_table(df_raw)
         df_metrics.to_csv('data.tsv', sep='\t', header=False, index=False)
 
+        # загрузка данных в БД
         try:
             with get_connection() as cnn:
                 with cnn.cursor() as cur:
@@ -36,19 +35,52 @@ class Service:
             return e, 'error'
 
     def query_db(self, start_dt: str, end_dt: str):
+        """
+        Функция получения разметки без задействования машинного обучения (перерасчета)
+
+        :param start_dt: левая граница временного интервала приближения
+        :param end_dt: правая граница временного интервала приближения
+        :return: списочное представление датафрейма для визуализации на фронте (либо exception)
+        """
 
         try:
             with get_connection() as cnn:
                 with cnn.cursor() as cur:
-                    cur.execute(f"SELECT * FROM METRICS WHERE time BETWEEN {start_dt} AND {end_dt}")
+                    cur.execute(f"SELECT * "
+                                f"FROM metrics "
+                                f"INNER JOIN labels ON labels.time = metrics.time " 
+                                f"WHERE labels.time BETWEEN '{start_dt}' AND '{end_dt}';")
                     res = cur.fetchall()
             cnn.close()
             return res
         except Exception as e:
             raise e
 
-    def query_ml(self, start_dt: str, end_dt: str, metrics: list):
+    def query_ml(self, start_dt: str, end_dt: str) -> Optional[dict]:
+        """
+        Функция получения разметки с задействованием машинного обучения (перерасчет)
 
+        :param start_dt: левая граница временного интервала приближения
+        :param end_dt: правая граница временного интервала приближения
+        :return: словарь названий метрик и датафреймов с элементами инференса для них
+        """
 
+        try:
+            with get_connection() as cnn:
+                with cnn.cursor() as cur:
+                    cur.execute(f"SELECT * FROM METRICS;")
+                    res = cur.fetchall()
+            cnn.close()
+            return ml(res, start_dt, end_dt)
+        except Exception as e:
+            raise e
 
-        pass
+    def get_labeled_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Функция получения разметки для датафрейма метрик
+
+        :param df: сырой датафрейм
+        :return: размеченный датафрейм
+        """
+
+        return get_data_labels(make_table(df))

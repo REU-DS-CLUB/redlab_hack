@@ -1,32 +1,31 @@
 import pandas as pd
-import numpy as np
 from typing import Dict
 import matplotlib.pyplot as plt
 
 
 def web_response(data: pd.DataFrame) -> pd.DataFrame:
-    # Фильтрация данных
+    # фильтрация данных
     filtered_data = data[
         (data['language'] == 'java') &
         (data['app_name'] == '[GMonit] Collector') &
         (data['scope'].isna()) &
         (data['name'] == 'HttpDispatcher')]
 
-    # Преобразование столбца 'point' в datetime
+    # преобразование столбца 'point' в datetime
     filtered_data["point"] = pd.to_datetime(filtered_data["point"])
     filtered_data['time'] = filtered_data['point']
 
-    # Группировка данных по времени и вычисление отношения сумм total_call_time к call_count
+    # группировка данных по времени и вычисление отношения сумм total_call_time к call_count
     grouped_data = filtered_data.groupby('time').agg({
         'total_call_time': 'sum',
         'call_count': 'sum'
     }).reset_index()
 
-    # Вычисление web_response как отношение сумм total_call_time к call_count
+    # вычисление web_response как отношение сумм total_call_time к call_count
     grouped_data['web_response'] = grouped_data['total_call_time'] / grouped_data['call_count']
     grouped_data['web_response'] = grouped_data['web_response'].fillna(0)
 
-    # Сортировка по времени
+    # сортировка по времени
     result_data = grouped_data[['time', 'web_response']].sort_values(by='time')
 
     return result_data
@@ -121,6 +120,7 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
     })
 
     return metrics_table
+
 
 def plot_anomalies(data: Dict[str, pd.DataFrame], feature_name: str):
     df = data[feature_name]
