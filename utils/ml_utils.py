@@ -1,6 +1,7 @@
 """
 Вспомогательные функции для работы ML'я
 """
+import json
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -72,7 +73,7 @@ def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, 
     return weights
 
 
-def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str, pd.DataFrame]:
+def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str, json]:
     """
     Функция с пайплайном предобработки данных и инференса
 
@@ -120,7 +121,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str
         clf_df = fit_clf(clf, data_values)
         clf_df["time"] = filtered_df["time"].values
         clf_df["value"] = filtered_df[column].values
-        result[column] = clf_df
+        result[column] = clf_df.to_json()
 
     return result
 
