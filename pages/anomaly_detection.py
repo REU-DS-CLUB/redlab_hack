@@ -1,8 +1,5 @@
 import json
-from lib2to3.pgen2.pgen import DFAState
-from time import strptime
-from typing import Dict
-import streamlit as st
+
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
@@ -10,8 +7,8 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from datetime import date, datetime, time, timedelta
 from host.request import get_marc, get_new_anomalies, load_data
-import requests
 import seaborn as sns
+import streamlit as st
 
 
 st.set_page_config(
@@ -56,29 +53,36 @@ def write2(data: pd.DataFrame, feature_name : str):
     
 
 @st.cache_data()
-def grath(ts_df, metric: str):
+def grath2(ts_df, metric: str):
     # Создаем данные временного ряда
-    dates = ts_df['time'].head(1000)
-    values = ts_df[metric].head(1000)
 
+    ts_df = ts_df.drop_duplicates("time")
+    df = (ts_df[metric].astype(float))
+    ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
+
+    dates = ts_df['time']
+    values = df
+
+    kostyl = {"web_response": "web_responce_labels", "throughput": "thoughput_labels", "apdex": "apdex_labels",
+              "error": "error_labels"}
+    ind = kostyl[metric]
+    anomalies = ts_df[ts_df[ind] == 1]
 
     # Вычисляем квантили
     q25 = np.percentile(values, 25)
     median = np.percentile(values, 50)
     q75 = np.percentile(values, 75)
-
+    colors = ['blue' if a == 0 else 'red' for a in anomalies[ind]]
     # Создаем подграфики
     fig = make_subplots(rows=1, cols=2, column_widths=[0.9, 0.25], subplot_titles=('Временной ряд', 'Распределение значений'))
-
-
-
     fig.add_trace(go.Scatter(x=dates, y=values, mode='lines', name='Временной ряд'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=anomalies['time'], y=anomalies[metric], mode='markers', marker=dict(color=colors, size=8), name='Аномалии'),row=1, col=1)
     fig.add_trace(go.Scatter(x=dates, y=[median]*len(dates), mode='lines', name='Медиана', line=dict(color='red', dash='dash')), row=1, col=1)
     fig.add_trace(go.Scatter(x=dates, y=[q25]*len(dates), mode='lines', name='1 квартиль', line=dict(color='green', dash='dash')), row=1, col=1)
     fig.add_trace(go.Scatter(x=dates, y=[q75]*len(dates), mode='lines', name='3 квартиль', line=dict(color='orange', dash='dash')), row=1, col=1)
 
     # Гистограмма распределения значений временного ряда (горизонтальная)
-    fig.add_trace(go.Histogram(y=values, nbinsy=10, orientation='h', marker_color='aqua', opacity=0.7, showlegend=False, name='Распределение'), row=1, col=2)
+    fig.add_trace(go.Histogram(y=values, nbinsy=35, orientation='h', marker_color='aqua', opacity=0.7, showlegend=False, name='Распределение'), row=1, col=2)
     fig.add_trace(go.Scatter(x=[0, 0], y=[min(values), max(values)], mode='lines', showlegend=False, line=dict(color='black', dash='dash')), row=1, col=2)
     fig.add_trace(go.Scatter(x=[0, 0], y=[q25, q25], mode='lines', showlegend=False, line=dict(color='green', dash='dash')), row=1, col=2)
     fig.add_trace(go.Scatter(x=[0, 0], y=[q75, q75], mode='lines', showlegend=False, line=dict(color='orange', dash='dash')), row=1, col=2)
@@ -91,115 +95,156 @@ def grath(ts_df, metric: str):
         showlegend=True
     )
     # Настройки оформления
-    fig.update_layout(title='Временной ряд с распределением значений', xaxis_title='Дата', yaxis_title='Значение', template='plotly_white')
+    fig.update_layout(title=f'Временной ряд с распределением значений метрики {metric}', xaxis_title='Дата', yaxis_title='Значение', template='plotly_white')
     fig.update_xaxes(title_text='Частота', row=1, col=1)
     fig.update_yaxes(title_text='Значение', row=1, col=1)
     fig.update_yaxes(title_text='Значение', row=1, col=2)
 
     # Показать графики с помощью Streamlit
-    #st.plotly_chart(fig)
-    st.write(fig)
+    st.plotly_chart(fig)
     
-
-@st.cache_data() # suppress_st_warning=True
-def grath1(ts_df, metric: str):
+@st.cache_data()
+def grath(ts_df, metric: str):
     # Создаем данные временного ряда
-    ts_df = ts_df.drop_duplicates("time")    
-    df = (ts_df[metric].astype(float))
-    ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
-
     dates = ts_df['time']
     values = ts_df[metric]
-    
 
     # Вычисляем квантили
     q25 = np.percentile(values, 25)
     median = np.percentile(values, 50)
     q75 = np.percentile(values, 75)
 
-    # Построение графиков
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={'width_ratios': [3, 1]})
+    # Создаем подграфики
+    fig = make_subplots(rows=1, cols=2, column_widths=[0.9, 0.25], subplot_titles=('Временной ряд', 'Распределение значений'))
 
-    # График временного ряда
-    ax1.plot(dates, values, label='Временной ряд')
-    
-    ax1.axhline(median, color='black', linestyle='-', label='Медиана')
-    ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
-    ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
-    ax1.legend()
-    ax1.set_title('Временной ряд с линиями квантилей')
-    ax1.set_xlabel('Дата')
-    ax1.set_ylabel('Значение')
+
+
+    fig.add_trace(go.Scatter(x=dates, y=values, mode='lines', line=dict(color='darksalmon', dash='solid'), name='Временной ряд'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=dates, y=[median]*len(dates), mode='lines', opacity=0.5, name='Медиана', line=dict(color=' black', dash='dash', )), row=1, col=1)
+    fig.add_trace(go.Scatter(x=dates, y=[q25]*len(dates), mode='lines', name='1 квартиль', opacity=0.5,  line=dict(color='green', dash='dash')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=dates, y=[q75]*len(dates), mode='lines', name='3 квартиль', opacity=0.5, line=dict(color='orange', dash='dash')), row=1, col=1)
 
     # Гистограмма распределения значений временного ряда (горизонтальная)
-    ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
-    ax2.axhline(median, color='black', linestyle='-', label='Медиана')
-    ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
-    ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
-    ax2.set_title('Распределение значений временного ряда')
-    ax2.set_xlabel('Частота')
-    ax2.set_ylabel('Значение')
-    # ax2.legend()
+    fig.add_trace(go.Histogram(y=values, nbinsy=31, orientation='h', marker_color='peachpuff', opacity=0.7, showlegend=False, name='Распределение'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=[0, 0], y=[min(values), max(values)], mode='lines', showlegend=False, line=dict(color='black', dash='dash')), row=1, col=2)
+    fig.add_trace(go.Scatter(x=[0, 0], y=[q25, q25], mode='lines', showlegend=False, line=dict(color='green', dash='dash')), row=1, col=2)
+    fig.add_trace(go.Scatter(x=[0, 0], y=[q75, q75], mode='lines', showlegend=False, line=dict(color='orange', dash='dash')), row=1, col=2)
 
-    # Устанавливаем одинаковые пределы оси y для обоих графиков
-    # ax1.set_ylim(min(values), max(values))
-    # ax2.set_ylim(min(values), max(values))
+    fig.update_layout(
+        title='Временной ряд с распределением значений',
+        width=1000,
+        height=600,
+        template='plotly_white',
+        showlegend=True
+    )
+    # Настройки оформления
+    fig.update_layout(title=f'Временной ряд с распределением значений метрики {metric}', xaxis_title='Дата', yaxis_title='Значение', template='plotly_white')
+    fig.update_xaxes(title_text='Частота', row=1, col=1)
+    fig.update_yaxes(title_text='Значение', row=1, col=1)
+    fig.update_yaxes(title_text='Значение', row=1, col=2)
 
-    plt.tight_layout()
-    plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
-    st.write(fig)
+    # Показать графики с помощью Streamlit
+    st.plotly_chart(fig)
 
-@st.cache_data() # suppress_st_warning=True
-def grath2(ts_df, metric: str):
-    # Создаем данные временного ряда
-    ts_df = ts_df.drop_duplicates("time")    
-    df = (ts_df[metric].astype(float))
-    ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
+# @st.cache_data() # suppress_st_warning=True
+# def grath(ts_df, metric: str):
+#     # Создаем данные временного ряда
+#     ts_df = ts_df.drop_duplicates("time")    
+#     df = (ts_df[metric].astype(float))
+#     ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
 
-    dates = ts_df['time']
-    values = df
+#     dates = ts_df['time']
+#     values = ts_df[metric]
     
-    kostyl = {"web_response" : "web_responce_labels", "throughput" : "thoughput_labels", "apdex" : "apdex_labels", "error" : "error_labels"}
-    ind = kostyl[metric]
-    anomalies = ts_df[ts_df[ind] == 1]
 
-    # Вычисляем квантили
-    q25 = np.percentile(values, 25)
-    median = np.percentile(values, 50)
-    q75 = np.percentile(values, 75)
+#     # Вычисляем квантили
+#     q25 = np.percentile(values, 25)
+#     median = np.percentile(values, 50)
+#     q75 = np.percentile(values, 75)
 
-    # Построение графиков
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={'width_ratios': [3, 1]})
+#     # Построение графиков
+#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={'width_ratios': [3, 1]})
 
-    # График временного ряда
-    ax1.plot(dates, values, label='Временной ряд')
+#     # График временного ряда
+#     ax1.plot(dates, values, label='Временной ряд')
     
-    ax1.axhline(median, color='black', linestyle='-', label='Медиана')
-    ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
-    ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
-    ax1.scatter(anomalies['time'], anomalies[metric].astype(float), color='red', s=100, label='Аномалия')
-    ax1.legend()
-    ax1.set_title('Временной ряд с линиями квантилей')
-    ax1.set_xlabel('Дата')
-    ax1.set_ylabel('Значение')
+#     ax1.axhline(median, color='black', linestyle='-', label='Медиана')
+#     ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+#     ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+#     ax1.legend()
+#     ax1.set_title('Временной ряд с линиями квантилей')
+#     ax1.set_xlabel('Дата')
+#     ax1.set_ylabel('Значение')
 
-    # Гистограмма распределения значений временного ряда (горизонтальная)
-    ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
-    ax2.axhline(median, color='black', linestyle='-', label='Медиана')
-    ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
-    ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
-    ax2.set_title('Распределение значений временного ряда')
-    ax2.set_xlabel('Частота')
-    ax2.set_ylabel('Значение')
-    # ax2.legend()
+#     # Гистограмма распределения значений временного ряда (горизонтальная)
+#     ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
+#     ax2.axhline(median, color='black', linestyle='-', label='Медиана')
+#     ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+#     ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+#     ax2.set_title('Распределение значений временного ряда')
+#     ax2.set_xlabel('Частота')
+#     ax2.set_ylabel('Значение')
+#     # ax2.legend()
 
-    # Устанавливаем одинаковые пределы оси y для обоих графиков
-    # ax1.set_ylim(min(values), max(values))
-    # ax2.set_ylim(min(values), max(values))
+#     # Устанавливаем одинаковые пределы оси y для обоих графиков
+#     # ax1.set_ylim(min(values), max(values))
+#     # ax2.set_ylim(min(values), max(values))
 
-    plt.tight_layout()
-    plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
-    st.write(fig)
+#     plt.tight_layout()
+#     plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
+#     st.write(fig)
+
+# @st.cache_data() # suppress_st_warning=True
+# def grath2(ts_df, metric: str):
+#     # Создаем данные временного ряда
+#     ts_df = ts_df.drop_duplicates("time")    
+#     df = (ts_df[metric].astype(float))
+#     ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
+
+#     dates = ts_df['time']
+#     values = df
+    
+#     kostyl = {"web_response" : "web_responce_labels", "throughput" : "thoughput_labels", "apdex" : "apdex_labels", "error" : "error_labels"}
+#     ind = kostyl[metric]
+#     anomalies = ts_df[ts_df[ind] == 1]
+
+#     # Вычисляем квантили
+#     q25 = np.percentile(values, 25)
+#     median = np.percentile(values, 50)
+#     q75 = np.percentile(values, 75)
+
+#     # Построение графиков
+#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={'width_ratios': [3, 1]})
+
+#     # График временного ряда
+#     ax1.plot(dates, values, label='Временной ряд')
+    
+#     ax1.axhline(median, color='black', linestyle='-', label='Медиана')
+#     ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+#     ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+#     ax1.scatter(anomalies['time'], anomalies[metric].astype(float), color='red', s=100, label='Аномалия')
+#     ax1.legend()
+#     ax1.set_title('Временной ряд с линиями квантилей')
+#     ax1.set_xlabel('Дата')
+#     ax1.set_ylabel('Значение')
+
+#     # Гистограмма распределения значений временного ряда (горизонтальная)
+#     ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
+#     ax2.axhline(median, color='black', linestyle='-', label='Медиана')
+#     ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+#     ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+#     ax2.set_title('Распределение значений временного ряда')
+#     ax2.set_xlabel('Частота')
+#     ax2.set_ylabel('Значение')
+#     # ax2.legend()
+
+#     # Устанавливаем одинаковые пределы оси y для обоих графиков
+#     # ax1.set_ylim(min(values), max(values))
+#     # ax2.set_ylim(min(values), max(values))
+
+#     plt.tight_layout()
+#     plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
+#     st.write(fig)
 
 
 def init_state(state:str, default):
@@ -291,13 +336,13 @@ def request():
 
 def sketch1(data):
     if st.session_state["grath1_vis"]:
-        grath1(data, "web_response")
+        grath(data, "web_response")
     if st.session_state["grath2_vis"]:
-        grath1(data, "throughput")
+        grath(data, "throughput")
     if st.session_state["grath3_vis"]:     
-        grath1(data, "apdex")
+        grath(data, "apdex")
     if st.session_state["grath4_vis"]:   
-        grath1(data, "error")
+        grath(data, "error")
 
 def sketch2(data):
     if st.session_state["grath1_vis"]:
