@@ -161,10 +161,9 @@ def make_table(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_anomalies(data: Dict[str, pd.DataFrame], feature_name: str):
+
     df = data[feature_name]
-
     plt.figure(figsize=(20, 8))
-
     plt.plot(df['time'], df['value'], color='blue', label=f'Значения показателя {feature_name}')
     anomalies = df[df['labels'] == 1]
     plt.scatter(anomalies['time'], anomalies['value'], color='red', s=100, label='Аномалия')

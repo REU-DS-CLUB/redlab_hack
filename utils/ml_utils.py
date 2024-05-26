@@ -91,7 +91,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
         scores = model.decision_scores_
         threshold = model.threshold_
         threshold = (threshold - np.min(scores)) / (np.max(scores) - np.min(scores))
-        # print("Threshold: ", threshold)
+        #print("Threshold: ", threshold)
 
         return pd.DataFrame({
             "labels": labels,
@@ -118,10 +118,12 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime):
 
         clf_df = fit_clf(clf, data_values)
         clf_df["time"] = filtered_df["time"].values
+        clf_df["time"] = clf_df["time"].apply(lambda x: str(x))
         clf_df["value"] = filtered_df[column].values
         result[column] = clf_df.to_json()
 
     return result
+
 
 
 def get_data_labels(metrics_table: pd.DataFrame) -> pd.DataFrame:
@@ -133,6 +135,7 @@ def get_data_labels(metrics_table: pd.DataFrame) -> pd.DataFrame:
     """
 
     labeled_df = pd.DataFrame()
+
     labeled_df["time"] = metrics_table["time"]
 
     max_date = np.max(metrics_table["time"])
