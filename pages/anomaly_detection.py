@@ -1,3 +1,5 @@
+from contextlib import ExitStack
+from pickletools import read_stringnl_noescape
 from typing import Dict
 import streamlit as st
 import pandas as pd
@@ -6,7 +8,7 @@ import numpy as np
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from datetime import date, datetime, time, timedelta
-from host.request import get_marc
+from host.request import get_marc, get_new_anomalies
 
 
 st.set_page_config(
@@ -18,13 +20,17 @@ st.sidebar.success("Выберете интересующий раздел")
 @st.cache_data() # suppress_st_warning=True
 def write(data: Dict[str, pd.DataFrame], feature_name : str):
     
-    df = data[feature_name]
+    df = (data[feature_name]).astype(float)
 
     fig = plt.figure(figsize=(20, 8))
 
-    plt.plot(df['time'], df['value'], color='blue', label=f'Значения показателя {feature_name}')
-    anomalies = df[df['labels'] == 1]
-    plt.scatter(anomalies['time'], anomalies['value'], color='red', s=100, label='Аномалия')
+    plt.plot(data['time'], df, color='blue', label=f'Значения показателя {feature_name}')
+    ind = feature_name+'_labels'
+    anomalies = data[data[ind] == 1]
+    #print((anomalies['time'].replace("T", " ")).iloc[-1,0])
+    # anomalies.loc[:, "time"] = pd.to_datetime((anomalies['time']).str.replace("T", " "))
+    
+    plt.scatter(anomalies['time'], anomalies[feature_name], color='red', s=100, label='Аномалия')
     plt.title(f'Временной ряд с аномалиями показателя {feature_name}')
     plt.xlabel('Временной ряд')
     plt.ylabel(f'{feature_name}')
@@ -39,6 +45,7 @@ def grath(ts_df, metric: str):
     # Создаем данные временного ряда
     dates = ts_df['time'].head(1000)
     values = ts_df[metric].head(1000)
+
 
     # Вычисляем квантили
     q25 = np.percentile(values, 25)
@@ -111,10 +118,17 @@ def download(data_file):
     return pd.read_tsv(data_file)
 
 def request():
-    response = get_marc('2024-10-01 20:36:00', '2024-10-30 23:36:00')
-    json_text = response.json()
-    json_text = pd.DataFrame(json_text)
-    print( json_text )
+    try:
+        #response = get_marc('2024-04-01 20:36:00', '2024-04-30 23:36:00')
+        response = get_new_anomalies('2024-04-01 20:36:00', '2024-04-30 23:36:00')
+        json_text = response.json()
+        json_text = pd.DataFrame(json_text)
+        print("="*1000)
+        print( json_text )
+        write(json_text, "apdex")
+        # grath(json_text, "apdex")
+    except (...):
+        print("SOME ERROR IN REQUEST")
     
 
 # типо у меня есть эти константы откуда-нибудь
@@ -128,6 +142,7 @@ init_state("grath1_vis", True)
 init_state("grath2_vis", True)
 init_state("grath3_vis", True)
 init_state("grath4_vis", True)
+init_state("is_expanded", False)
 init_state("slider_val", (START_DATE.date(),END_DATE.date()))
 init_state("data", pd.read_csv('data.csv'))
 
@@ -144,10 +159,12 @@ if st.session_state["grath3_vis"]:
 if st.session_state["grath4_vis"]:   
     grath(data, "apdex")
 
-slider_val = st.slider("TEST",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"], key="slider_val")
+slider_val = st.slider("Неточный диапазон",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"], key="slider_val", label_visibility="visible")
 
-st.write("Настройки")
-col1, col2 = st.columns(2)
+
+
+exp = st.expander("Точный диапазон", expanded=st.session_state["is_expanded"])
+col1, col2 = exp.columns(2)
 with col1:
     st.date_input("Выберите дату старта", min_value=START_DATE, max_value=END_DATE, value=st.session_state["slider_val"][0],key="start_date") #key="start_date"
     selected_hour1 = st.number_input("Час", min_value=0, max_value=23, key="qwe")
@@ -156,7 +173,8 @@ with col2:
     end_date = st.date_input("Выберите дату конца", min_value=st.session_state.start_date + timedelta(days=1), max_value=END_DATE, value=st.session_state["slider_val"][1]) #, key="end_date"
     selected_hour2 = st.number_input("Час", min_value=0, max_value=23)
     selected_minute2 = st.number_input("Минута", min_value=0, max_value=59)
-    is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
+    
+is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
 st.write("Фильтрация")
 col1, col2 = st.columns(2)
 grath1_vis = col1.checkbox("Метрика 1", value=st.session_state["grath1_vis"]) # , key="grath1_vis"

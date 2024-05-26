@@ -9,3 +9,4 @@ show_pages(
 )
 st.sidebar.success("Выберете интересующий раздел")
 st.experimental_rerun()
+
