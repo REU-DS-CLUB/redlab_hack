@@ -54,7 +54,7 @@ def calculate_weight(data: pd.DataFrame, col_names: list[str], start: datetime, 
     
     return weights
 
-def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_names: List[str]) -> Dict[str, pd.DataFrame]:
+def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str, pd.DataFrame]:
 
     """
     Вход 
@@ -78,7 +78,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         scores = model.decision_scores_
         threshold = model.threshold_
         threshold = (threshold - np.min(scores)) / (np.max(scores) - np.min(scores))
-        print("Threshold: ", threshold)
+        #print("Threshold: ", threshold)
 
         return pd.DataFrame({
             "labels": labels,
@@ -86,6 +86,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         })
 
 
+    column_names = ["web_response", "throughput", "apdex", "error"]
     column_names.extend(['time', 'time_numeric'])
     filtered_df = data[(data['time'] >= start_date) & (data['time'] <= end_date)][column_names]
 
@@ -94,14 +95,12 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
     for column in column_names:
         data_values = filtered_df[['time_numeric', column]].values
 
-        if column == "apdex":
-            clf = ECOD(contamination=0.004, n_jobs=-1)
-        elif column == "web_response":
+        if column in ["web_response", "error"]:
             clf = IForest(contamination=0.001)
+        elif column == "apdex":
+            clf = IForest(contamination=0.003)
         elif column == "throughput":
             clf = HBOS(contamination=0.0035)
-        elif column == "error":
-            clf = IForest(contamination=0.0011)
         else:
             continue  
 
@@ -111,3 +110,20 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime, column_name
         result[column] = clf_df
 
     return result
+
+def get_data_labels(metrics_table: pd.DataFrame) -> pd.DataFrame:
+
+    labeled_df =  pd.DataFrame()
+    labeled_df["time"] = metrics_table["time"]
+
+    max_date = np.max(metrics_table["time"])
+    min_date = np.min(metrics_table["time"])
+
+    dict_dfs_metrics = ml(metrics_table, min_date, max_date)
+
+    for metrics_name in dict_dfs_metrics.keys():
+        metric_df = dict_dfs_metrics[metrics_name]
+        labeled_df[f"{metrics_name}_labels"] = metric_df["labels"]
+
+    return labeled_df
+
