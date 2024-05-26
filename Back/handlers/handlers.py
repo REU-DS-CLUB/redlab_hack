@@ -1,6 +1,7 @@
 """
 Ручки API-сервиса
 """
+from datetime import datetime
 from typing import Optional
 from pandas import DataFrame
 
@@ -137,7 +138,7 @@ async def local_algo(start_dt: str, end_dt: str) -> Optional[dict]:
 
     # проверяем корректность заданных параметров
     if end_dt > start_dt:
-        return service.query_ml(start_dt, end_dt)
+        return service.query_ml(datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S"), datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S"))
     else:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
                             detail='End date is earlier then start')

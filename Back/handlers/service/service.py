@@ -1,6 +1,7 @@
 """
 Вспомогательные фунцкии для ручек API-сервиса
 """
+from datetime import datetime
 from typing import Optional
 import pandas as pd
 
@@ -11,7 +12,7 @@ from utils.ml_utils import ml, get_data_labels
 
 class Service:
 
-    def update_db(self, df_raw: pd.DataFrame) -> Optional[(str, str)]:
+    def update_db(self, df_raw: pd.DataFrame) -> Optional[tuple]:
         """
         Функция для загрузки дополнительных данных в БД
 
@@ -35,7 +36,7 @@ class Service:
             cnn.close()
             return min(df_metrics['time']), max(df_metrics['time'])
         except Exception as e:
-            return e, 'error'
+            raise e
 
     def query_db(self, start_dt: str, end_dt: str):
         """
@@ -51,7 +52,7 @@ class Service:
                 with cnn.cursor() as cur:
                     cur.execute(f"SELECT * "
                                 f"FROM metrics "
-                                f"INNER JOIN labels ON labels.time = metrics.time " 
+                                f"INNER JOIN labels ON labels.time = metrics.time "
                                 f"WHERE labels.time BETWEEN '{start_dt}' AND '{end_dt}';")
                     res = cur.fetchall()
             cnn.close()
@@ -59,7 +60,7 @@ class Service:
         except Exception as e:
             raise e
 
-    def query_ml(self, start_dt: str, end_dt: str) -> Optional[dict]:
+    def query_ml(self, start_dt: datetime, end_dt: datetime) -> Optional[dict]:
         """
         Функция получения разметки с задействованием машинного обучения (перерасчет)
 
@@ -74,7 +75,8 @@ class Service:
                     cur.execute(f"SELECT * FROM METRICS;")
                     res = cur.fetchall()
             cnn.close()
-            return ml(res, start_dt, end_dt)
+            return ml(pd.DataFrame(res, columns=['time', 'time_numeric', 'time_numeric', 'web_response', 'throughput',
+                                                 'apdex', 'error']), start_dt, end_dt)
         except Exception as e:
             raise e
 

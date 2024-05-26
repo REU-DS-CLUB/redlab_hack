@@ -86,7 +86,7 @@ def ml(data: pd.DataFrame, start_date: datetime, end_date: datetime) -> Dict[str
             4. Изначальное значение value)
     """
 
-    def fit_clf(model, data: np.ndarray) -> pd.DataFrame:
+    def fit_clf(model, data: pd.DataFrame) -> pd.DataFrame:
         model.fit(data)
         labels = model.labels_
         scores = model.decision_scores_
