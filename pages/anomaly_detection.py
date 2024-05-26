@@ -1,3 +1,5 @@
+import json
+from lib2to3.pgen2.pgen import DFAState
 from time import strptime
 from typing import Dict
 import streamlit as st
@@ -95,11 +97,58 @@ def grath(ts_df, metric: str):
     fig.update_yaxes(title_text='Значение', row=1, col=2)
 
     # Показать графики с помощью Streamlit
-    st.plotly_chart(fig)
+    #st.plotly_chart(fig)
+    st.write(fig)
+    
+
+@st.cache_data() # suppress_st_warning=True
+def grath1(ts_df, metric: str):
+    # Создаем данные временного ряда
+    ts_df = ts_df.drop_duplicates("time")    
+    df = (ts_df[metric].astype(float))
+    ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
+
+    dates = ts_df['time']
+    values = ts_df[metric]
+    
+
+    # Вычисляем квантили
+    q25 = np.percentile(values, 25)
+    median = np.percentile(values, 50)
+    q75 = np.percentile(values, 75)
+
+    # Построение графиков
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={'width_ratios': [3, 1]})
+
+    # График временного ряда
+    ax1.plot(dates, values, label='Временной ряд')
+    
+    ax1.axhline(median, color='black', linestyle='-', label='Медиана')
+    ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+    ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+    ax1.legend()
+    ax1.set_title('Временной ряд с линиями квантилей')
+    ax1.set_xlabel('Дата')
+    ax1.set_ylabel('Значение')
+
+    # Гистограмма распределения значений временного ряда (горизонтальная)
+    ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
+    ax2.axhline(median, color='black', linestyle='-', label='Медиана')
+    ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+    ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
+    ax2.set_title('Распределение значений временного ряда')
+    ax2.set_xlabel('Частота')
+    ax2.set_ylabel('Значение')
+    # ax2.legend()
+
+    # Устанавливаем одинаковые пределы оси y для обоих графиков
+    # ax1.set_ylim(min(values), max(values))
+    # ax2.set_ylim(min(values), max(values))
+
     plt.tight_layout()
     plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
     st.write(fig)
-    
+
 @st.cache_data() # suppress_st_warning=True
 def grath2(ts_df, metric: str):
     # Создаем данные временного ряда
@@ -107,8 +156,8 @@ def grath2(ts_df, metric: str):
     df = (ts_df[metric].astype(float))
     ts_df["time"] = pd.to_datetime((ts_df['time']).str.replace("T", " "))
 
-    dates = ts_df['time'].head(1000)
-    values = df.head(1000)
+    dates = ts_df['time']
+    values = df
     
     kostyl = {"web_response" : "web_responce_labels", "throughput" : "thoughput_labels", "apdex" : "apdex_labels", "error" : "error_labels"}
     ind = kostyl[metric]
@@ -126,8 +175,8 @@ def grath2(ts_df, metric: str):
     ax1.plot(dates, values, label='Временной ряд')
     
     ax1.axhline(median, color='black', linestyle='-', label='Медиана')
-    ax1.axhline(q25, color='green', linestyle='-', label='0.25 квантиль')
-    ax1.axhline(q75, color='orange', linestyle='-', label='0.75 квантиль')
+    ax1.axhline(q25, color='green', linestyle='-', label='1 квартиль')
+    ax1.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
     ax1.scatter(anomalies['time'], anomalies[metric].astype(float), color='red', s=100, label='Аномалия')
     ax1.legend()
     ax1.set_title('Временной ряд с линиями квантилей')
@@ -135,18 +184,18 @@ def grath2(ts_df, metric: str):
     ax1.set_ylabel('Значение')
 
     # Гистограмма распределения значений временного ряда (горизонтальная)
-    ax2.hist(values, bins=10, orientation='horizontal', color='blue', alpha=0.7)
+    ax2.hist(values, bins=30, orientation='horizontal', color='blue', alpha=0.7)
     ax2.axhline(median, color='black', linestyle='-', label='Медиана')
     ax2.axhline(q25, color='green', linestyle='-', label='1 квартиль')
     ax2.axhline(q75, color='orange', linestyle='-', label='3 квартиль')
     ax2.set_title('Распределение значений временного ряда')
     ax2.set_xlabel('Частота')
     ax2.set_ylabel('Значение')
-    ax2.legend()
+    # ax2.legend()
 
     # Устанавливаем одинаковые пределы оси y для обоих графиков
-    ax1.set_ylim(min(values), max(values))
-    ax2.set_ylim(min(values), max(values))
+    # ax1.set_ylim(min(values), max(values))
+    # ax2.set_ylim(min(values), max(values))
 
     plt.tight_layout()
     plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-light.mplstyle')
@@ -178,14 +227,35 @@ def save(end_date,is_recreate, selected_hour1, selected_hour2, selected_minute1,
     if (st.session_state["is_recreate"]):
         response = get_new_anomalies(str(st.session_state["start_date"]), str(st.session_state["end_date"]))
         if (response.status_code == 200):
-            json_text = pd.DataFrame(response.json())
-            st.session_state["data"] = json_text
+            res_json = response.json()
+            
+            kostyl = {"web_response" : "web_responce_labels", "throughput" : "thoughput_labels", "apdex" : "apdex_labels", "error" : "error_labels"}
+            DF1 = pd.DataFrame(json.loads(res_json['web_response']))
+            DF1.rename(columns={'labels' : kostyl["web_response"], 'probability' : 'probs_web_response', 'value' : 'web_response'}, inplace=True)
+            
+            DF2 = pd.DataFrame(json.loads(res_json['throughput']))
+            DF2.rename(columns={'labels': kostyl["throughput"], 'probability': 'probs_throughput', 'value': 'throughput'}, inplace=True)
+            
+            DF3 = pd.DataFrame(json.loads(res_json['apdex']))
+            DF3.rename(columns={'labels': kostyl["apdex"], "probability": "qwe2", "value": "apdex"}, inplace=True)
+            
+            DF4 = pd.DataFrame(json.loads(res_json['error']))
+            DF4.rename(columns={'labels': kostyl["error"], "probability": "qwe", "value": "error"}, inplace=True)
+
+
+            df_final = DF1.merge(DF2, on= "time").merge(DF3, on= "time").merge(DF4, on="time") 
+            df_final = df_final.sort_values("time")
+            st.session_state["data"] = df_final
+            # json_text = pd.DataFrame(response.json())
+            # st.session_state["data"] = json_text
+            print(df_final)
         # http запрос с пересчетом
     else:
         response = get_marc(str(st.session_state["start_date"]), str(st.session_state["end_date"]))
         if (response.status_code == 200):
             json_text = pd.DataFrame(response.json())
             st.session_state["data"] = json_text
+            print(json_text)
         # http запрос без пересчета
     
     
@@ -216,13 +286,13 @@ def request():
 
 def sketch1(data):
     if st.session_state["grath1_vis"]:
-        grath(data, "web_response")
+        grath1(data, "web_response")
     if st.session_state["grath2_vis"]:
-        grath(data, "throughput")
+        grath1(data, "throughput")
     if st.session_state["grath3_vis"]:     
-        grath(data, "apdex")
+        grath1(data, "apdex")
     if st.session_state["grath4_vis"]:   
-        grath(data, "error")
+        grath1(data, "error")
 
 def sketch2(data):
     if st.session_state["grath1_vis"]:
@@ -235,8 +305,8 @@ def sketch2(data):
         grath2(data, "error")
 
 # типо у меня есть эти константы откуда-нибудь
-START_DATE = datetime(year=2024, month=4, day=1,hour=5, minute=10)
-END_DATE = datetime(year=2024, month=4, day=28,hour=11, minute=30)
+START_DATE = datetime(year=2024, month=4, day=6,hour=0, minute=0) # 16
+END_DATE = datetime(year=2024, month=5, day=15,hour=0, minute=0)
 
 init_state("start_date", START_DATE)
 init_state("end_date", END_DATE)
@@ -255,9 +325,15 @@ st.markdown("""<h1 style = 'text-align: center'> Анализ временног
 
 data = st.session_state["data"]
 if (st.session_state["is_bad_data"] == False):
-    sketch1(data)
+    if not data.empty:
+        sketch1(data)
+    else:
+        st.write("Нет данных для отображения")
 else:
-    sketch2(data)
+    if not data.empty:
+        sketch2(data)
+    else:
+        st.write("Нет данных для отображения")
 
 slider_val = st.slider("Неточный диапазон",START_DATE.date(), END_DATE.date(), value=st.session_state["slider_val"], key="slider_val", label_visibility="visible")
 
@@ -277,10 +353,10 @@ with col2:
 is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?") #, key="is_recreate"
 st.write("Фильтрация")
 col1, col2 = st.columns(2)
-grath1_vis = col1.checkbox("Метрика 1", value=st.session_state["grath1_vis"]) # , key="grath1_vis"
-grath2_vis = col1.checkbox("Метрика 2", value=st.session_state["grath2_vis"]) # , key="grath2_vis"
-grath3_vis = col2.checkbox("Метрика 3", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
-grath4_vis = col2.checkbox("Метрика 4", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
+grath1_vis = col1.checkbox("Метрика web response", value=st.session_state["grath1_vis"]) # , key="grath1_vis"
+grath2_vis = col1.checkbox("Метрика throughput", value=st.session_state["grath2_vis"]) # , key="grath2_vis"
+grath3_vis = col2.checkbox("Метрика apdex", value=st.session_state["grath3_vis"]) # , key="grath3_vis"
+grath4_vis = col2.checkbox("Метрика error", value=st.session_state["grath4_vis"]) # , key="grath4_vis"
 
 st.button("Принять", on_click=save, args=(end_date,is_recreate,selected_hour1,selected_hour2,selected_minute1,selected_minute2,  grath1_vis,grath2_vis,grath3_vis,grath4_vis,slider_val,))
 
