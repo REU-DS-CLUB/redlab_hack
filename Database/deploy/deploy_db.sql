@@ -1,4 +1,6 @@
+--инициализация необходимых таблиц при деплое сервиса
 drop table if exists metrics;
+drop table if exists labels;
 
 create table if not exists metrics
 (
@@ -8,4 +10,13 @@ create table if not exists metrics
     throughput      text,
     apdex           text,
     error_rate      text
+);
+
+create table if not exists labels
+(
+    "time"              timestamp,
+    web_responce_labels integer,
+    thoughput_labels    integer,
+    apdex_labels        integer,
+    error_labels        integer
 );

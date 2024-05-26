@@ -1,3 +1,6 @@
+"""
+Загрузка переменных окрцжения
+"""
 from dotenv import load_dotenv
 import os
 

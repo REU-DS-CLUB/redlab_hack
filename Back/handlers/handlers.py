@@ -1,28 +1,28 @@
-import io
-from pandas import read_table, DataFrame
+"""
+Ручки API-сервиса
+"""
+from datetime import datetime
+from typing import Optional
+from pandas import DataFrame
 
-from fastapi import APIRouter, UploadFile, Request, HTTPException, status
+from fastapi import APIRouter, Request, HTTPException, status
 from streaming_form_data import StreamingFormDataParser
-from streaming_form_data.targets import FileTarget, ValueTarget
+from streaming_form_data.targets import ValueTarget
 from streaming_form_data.validators import MaxSizeValidator, ValidationError
 from starlette.requests import ClientDisconnect
-from starlette.status import HTTP_405_METHOD_NOT_ALLOWED, HTTP_200_OK
 
 from . import service
 
-MAX_FILE_SIZE = 1024 * 1024 * 1024 * 4
+MAX_FILE_SIZE = 1024 * 1024 * 1024 * 2
 MAX_REQUEST_BODY_SIZE = MAX_FILE_SIZE + 1024
 
 handlers = APIRouter(
-    prefix="/handlers",
+    prefix='/handlers',
     tags=['handlers']
 )
 
 
-def list_as_tuple(l):
-    return tuple(l or [])
-
-
+# классы для проверки ограничений ручки по приему файлов
 class MaxBodySizeException(Exception):
     def __init__(self, body_len: str):
         self.body_len = body_len
@@ -39,34 +39,56 @@ class MaxBodySizeValidator:
             raise MaxBodySizeException(body_len=str(self.body_len))
 
 
-@handlers.post('/upload')
-async def upload(request: Request):
+@handlers.post('/upload',
+               description='upload new data')
+async def upload(request: Request) -> dict[str, str]:
+    """
+    Ручка по загрузке новой порции данных в БД с определенными ограничениями в реализации на данный момент
+    (только .tsv, до 2gb, неповторяющиеся временные интервалы)
+
+    :param request: запрос от пользователя с открытым файлом и заголовками
+    :return: минимальная и максимальная дата в данных
+    """
+
     body_validator = MaxBodySizeValidator(MAX_REQUEST_BODY_SIZE)
     filename = request.headers.get('Filename')
 
     if not filename:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail='Filename header is missing')
+    # загружаем файл в память из стрима
     try:
         file_ = ValueTarget(validator=MaxSizeValidator(MAX_FILE_SIZE))
-        #filepath = os.path.join('./', os.path.basename(filename))
-        #file_ = FileTarget(filepath, validator=MaxSizeValidator(MAX_FILE_SIZE))
         parser = StreamingFormDataParser(headers=request.headers)
         parser.register('file', file_)
         async for chunk in request.stream():
             body_validator(chunk)
             parser.data_received(chunk)
 
+        # переводим данные в датафрейм
         columns = ['account_id', 'name', 'point', 'call_count', 'total_call_time', 'total_exclusive_time',
                    'min_call_time', 'max_call_time', 'sum_of_squares', 'instances', 'language', 'app_name',
                    'app_id', 'scope', 'host', 'display_host', 'pid', 'agent_version', 'labels']
 
         df = DataFrame([x.split('\t') for x in file_.value.decode('utf-8').replace('\r', '').split('\n')],
                        columns=columns)
-        min_dt, max_dt = service.update_db(df)
-        # df = pd.read_table(filepath)
-        # return {"filepath": filepath, "file_": file_.multipart_filename, "df": str(df.head(0))}
-        return {"min_dt": min_dt, "max_dt": max_dt}
+
+        df.astype({'call_count': 'float'})
+        df.astype({'total_call_time': 'float'})
+        df.astype({'total_exclusive_time': 'float'})
+
+        # отправляем данные на предобработку и сохранение
+        try:
+            service.update_db(df)
+        except:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                                detail='Error while preprocessing')
+
+        try:
+            service.update_db(service.get_labeled_df(df))
+        except:
+            raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                                detail='Error while preprocessing')
 
     except ClientDisconnect:
         print("Client Disconnected")
@@ -81,12 +103,42 @@ async def upload(request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f'There was an error uploading the file: {e}')
 
-
-@handlers.get('/simple')
-async def simple(start_dt: str, end_dt: str):
-    return service.query_db(start_dt, end_dt)
+    return {"message": "success"}
 
 
-@handlers.get('/complicated')
-async def complicated(start_dt: str, end_dt: str, flag: bool):
-    return service.query_ml(start_dt, end_dt, flag)
+@handlers.get('/global_detection',
+              description='get global predictions')
+async def global_algo(start_dt: str, end_dt: str) -> Optional[list[dict]]:
+    """
+    Ручка по получению глобальных аномалий (аномалий относительно всего временного ряда)
+
+    :param start_dt: левая граница временного интервала приближения
+    :param end_dt: правая граница временного интервала приближения
+    :return: списочное представление датафрейма для визуализации на фронте (либо exception)
+    """
+
+    # проверяем корректность заданных параметров
+    if end_dt > start_dt:
+        return service.query_db(start_dt, end_dt)
+    else:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                            detail='End date is earlier then start')
+
+
+@handlers.get('/local_detection',
+              description='get local predictions')
+async def local_algo(start_dt: str, end_dt: str) -> Optional[dict]:
+    """
+    Ручка по получению глобальных аномалий (аномалий относительно всего временного ряда)
+
+    :param start_dt: левая граница временного интервала приближения
+    :param end_dt: правая граница временного интервала приближения
+    :return: списочное представление датафрейма для визуализации на фронте (либо exception)
+    """
+
+    # проверяем корректность заданных параметров
+    if end_dt > start_dt:
+        return service.query_ml(datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S"), datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S"))
+    else:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                            detail='End date is earlier then start')

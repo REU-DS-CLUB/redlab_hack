@@ -1,3 +1,6 @@
+"""
+Логирование экспериментов
+"""
 import wandb
 import json
 

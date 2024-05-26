@@ -1,3 +1,6 @@
+"""
+Вспомогательный функции для работы с БД
+"""
 from psycopg import connect, connection
 from psycopg.rows import dict_row
 import os
@@ -9,12 +12,11 @@ settings = Settings()
 
 def get_connection() -> connection:
     """
-
-    How to:
+    Функция для создания подключения к БД
 
     with get_connection() as conn:
         with get_connection().cursor() as cur:
-            cur.execute("SELECT * FROM raw;")
+            cur.execute("SELECT <columns> FROM <table>;")
     conn.close()
 
     :return: pg connection object
