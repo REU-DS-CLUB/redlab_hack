@@ -8,6 +8,9 @@ from plotly.subplots import make_subplots
 from datetime import datetime, time, timedelta
 from host.request import get_marc, get_new_anomalies
 import seaborn as sns
+from streamlit.elements.utils import _shown_default_value_warning
+
+_shown_default_value_warning = False
 
 st.set_page_config(
     page_title='analysis_time_series',
@@ -284,7 +287,7 @@ def save(end_date, is_recreate, selected_hour1, selected_hour2, selected_minute1
         if (response.status_code == 200):
             json_text = pd.DataFrame(response.json())
             print(json_text)
-            json_text.sort_values("time")
+            json_text = json_text.sort_values("time")
             st.session_state["data"] = json_text
         # http запрос без пересчета
 
@@ -378,7 +381,7 @@ with col2:
     selected_hour2 = st.number_input("Час", min_value=0, max_value=23)
     selected_minute2 = st.number_input("Минута", min_value=0, max_value=59)
 
-is_recreate = st.checkbox("Пересчитывать аномалии в диапазоне?")  #, key="is_recreate"
+is_recreate = st.checkbox("Пересчитывать аномалии на выбранном промежутке")  #, key="is_recreate"
 st.write("Фильтрация")
 col1, col2 = st.columns(2)
 grath1_vis = col1.checkbox("Метрика Web_response", value=st.session_state["grath1_vis"])  # , key="grath1_vis"
@@ -387,10 +390,8 @@ grath3_vis = col2.checkbox("Метрика Apdex", value=st.session_state["grath
 grath4_vis = col2.checkbox("Метрика Error_rate", value=st.session_state["grath4_vis"])  # , key="grath4_vis"
 
 st.button("Принять", on_click=save, args=(
-end_date, is_recreate, selected_hour1, selected_hour2, selected_minute1, selected_minute2, grath1_vis, grath2_vis,
-grath3_vis, grath4_vis, slider_val,))
-
-st.button("REQUEST", on_click=request)
+    end_date, is_recreate, selected_hour1, selected_hour2, selected_minute1, selected_minute2, grath1_vis, grath2_vis,
+    grath3_vis, grath4_vis, slider_val,))
 
 data_file = st.file_uploader(label='Вы можете загрузить свой собственный файл с данными!', accept_multiple_files=False,
                              type="tsv")
