@@ -58,4 +58,4 @@ API-эндпоинты доступны по ссылке: http://80.87.104.231:
 | Ворогушин Максим                    | Front           | @Maksoit       |
 | Иванов Александр                    | MLE             | @lild1tz       |
 | Мичурин Артем                       | DE              | @artemmichurin |
-| Ващкевич Алексей                    | Front + MLE     | @gasboy04      |
+| Вашкевич Алексей                    | Front + MLE     | @gasboy04      |
