@@ -57,5 +57,5 @@ API-эндпоинты доступны по ссылке: http://80.87.104.231:
 | Пашинская Пелагея                   | Team lead + MLE | @polyanka003   |
 | Ворогушин Максим                    | Front           | @Maksoit       |
 | Иванов Александр                    | MLE             | @lild1tz       |
-| Мичурин Артем                       | DE              | @artemmichurin |
+| Мичурин Артем                       | Backend + DE              | @artemmichurin |
 | Вашкевич Алексей                    | Front + MLE     | @gasboy04      |
